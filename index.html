@@ -54,7 +54,8 @@
   .profit { font-size:13px; padding:6px 8px; border-radius:6px; background:#f7f7f7; margin-bottom:6px; }
   .profit.pos { color:#27ae60; font-weight:bold; }
   .profit.neg { color:#e74c3c; font-weight:bold; }
-  .checkRow { display:flex; align-items:center; gap:6px; font-size:13px; margin-bottom:6px; }
+  .checkRow { display:flex; align-items:center; gap:6px; font-size:13px; margin-bottom:6px; cursor:pointer; }
+  .checkRow span { white-space:nowrap; }
   .actions { display:flex; gap:6px; margin-top:8px; }
   .actions button { flex:1; padding:8px; border:none; border-radius:6px; cursor:pointer; font-size:13px; }
   .btnSold { background:#333; color:#fff; }
@@ -264,9 +265,9 @@ function renderGrid(){
           利潤: ${priceSym}${profit.toFixed(1)} (成本已換算為 ${d.currency||'HKD'})
         </div>
 
-        <div class="checkRow">
-          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField('${id}','negotiable',this.checked)"> 🏷 可議價
-        </div>
+        <label class="checkRow">
+          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField('${id}','negotiable',this.checked)"> <span>🏷 可議價</span>
+        </label>
 
         <div class="actions">
           <button class="btnSold" onclick="toggleSold('${id}', ${!d.sold})">${d.sold ? '↩ 復原' : '✔ 標為已售'}</button>
