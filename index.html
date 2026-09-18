@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
-<title>玩偶管理後台</title>
+<title>肉老板管理后台</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
@@ -99,33 +99,33 @@
 
 <div id="loginBox">
   <h2>🔒 管理者登入</h2>
-  <input type="password" id="pwdInput" placeholder="輸入密碼">
+  <input type="password" id="pwdInput" placeholder="输入密码">
   <button onclick="checkLogin()">登入</button>
 </div>
 
 <div id="app" class="hidden">
   <header>
-    <h1>🧸 玩偶管理後台</h1>
+    <h1>🧸 肉老板管理后台</h1>
     <div class="tabs">
       <button class="tab-btn active" id="tabDolls" onclick="switchTab('dolls')">玩偶管理</button>
-      <button class="tab-btn" id="tabOrders" onclick="switchTab('orders')">🛒 客人訂單</button>
+      <button class="tab-btn" id="tabOrders" onclick="switchTab('orders')">🛒 客人订单</button>
     </div>
   </header>
 
   <div id="dollsPanel">
     <div class="toolbar">
       <button onclick="addDoll()">➕ 新增玩偶</button>
-      <button class="secondary" onclick="refreshRates()">🔄 重新整理匯率</button>
-      <button class="secondary" onclick="exportData()">💾 匯出備份</button>
+      <button class="secondary" onclick="refreshRates()">🔄 重新整理汇率</button>
+      <button class="secondary" onclick="exportData()">💾 汇出备份</button>
       <label class="secondary" style="padding:10px 16px;border-radius:8px;background:#666;color:#fff;cursor:pointer;">
-        📂 匯入備份 <input type="file" accept=".json" style="display:none" onchange="importData(event)">
+        📂 汇入备份 <input type="file" accept=".json" style="display:none" onchange="importData(event)">
       </label>
     </div>
     <div class="stats">
-      <div>總數量: <b id="statTotal">0</b></div>
+      <div>总数量: <b id="statTotal">0</b></div>
       <div>已售出: <b id="statSold">0</b></div>
       <div>未售出: <b id="statAvail">0</b></div>
-      <div>總利潤(概估,按HKD折算): <b id="statProfit">HK$0</b></div>
+      <div>总利润(概估,按HKD折算): <b id="statProfit">HK$0</b></div>
     </div>
     <div id="grid"></div>
   </div>
@@ -142,12 +142,12 @@
     <div id="cropContainer"><img id="cropImg" src=""></div>
     <input type="range" id="zoomRange" min="-1" max="3" step="0.1" value="0" style="width:100%;margin-top:10px;">
     <div class="cropControls">
-      <button onclick="rotateCrop(-90)">↺ 向左轉</button>
-      <button onclick="rotateCrop(90)">↻ 向右轉</button>
+      <button onclick="rotateCrop(-90)">↺ 向左转</button>
+      <button onclick="rotateCrop(90)">↻ 向右转</button>
     </div>
     <div class="cropControls">
       <button onclick="cancelCrop()">取消</button>
-      <button class="primary" onclick="confirmCrop()">✔ 確認並上傳</button>
+      <button class="primary" onclick="confirmCrop()">✔ 确认并上传</button>
     </div>
   </div>
 </div>
@@ -175,7 +175,7 @@ function checkLogin(){
     document.getElementById('app').classList.remove('hidden');
     init();
   } else {
-    showToast('密碼錯誤');
+    showToast('密码错误');
   }
 }
 
@@ -209,9 +209,9 @@ async function refreshRates(){
     const res = await fetch('https://api.frankfurter.dev/v1/latest?base=HKD&symbols=CNY,JPY,KRW,TWD,USD');
     const data = await res.json();
     rates = { HKD:1, ...data.rates };
-    showToast('匯率已更新');
+    showToast('汇率已更新');
   }catch(e){
-    showToast('匯率讀取失敗,將使用預設估值');
+    showToast('汇率读取失败,将使用预设估值');
     rates = { HKD:1, CNY:0.93, JPY:19.5, KRW:171, TWD:4.05, USD:0.128 };
   }
   if(dolls.length) renderGrid();
@@ -225,7 +225,7 @@ function convert(amount, from, to){
 
 async function loadDolls(){
   const { data, error } = await sb.from('dolls').select('*').order('item_no', {ascending:true});
-  if(error){ showToast('讀取失敗: '+error.message); return; }
+  if(error){ showToast('读取失败: '+error.message); return; }
   dolls = data || [];
   renderGrid();
 }
@@ -248,22 +248,22 @@ function renderGrid(){
     card.innerHTML = `
       <label class="imgWrap" for="fileInput-${id}">
         <span class="badge">No. ${String(d.item_no).padStart(3,'0')}</span>
-        ${d.image_url ? `<img src="${d.image_url}">` : `<div class="placeholder">點擊上傳照片</div>`}
+        ${d.image_url ? `<img src="${d.image_url}">` : `<div class="placeholder">点击上传照片</div>`}
         ${d.sold ? '<div class="soldStamp">已售出</div>' : ''}
         <div class="uploadOverlay hidden" id="overlay-${id}">
           <div class="spinner"></div>
-          <div>上傳中,請稍候...</div>
+          <div>上传中,请稍等...</div>
         </div>
         <input type="file" accept="image/*" id="fileInput-${id}" style="display:none" onchange="onFileSelected(event, '${id}')">
       </label>
       <div class="body">
-        <input type="text" placeholder="玩偶名稱" value="${d.name || ''}" onchange="updateField('${id}','name',this.value)">
-        <input type="text" placeholder="分類 (例: 拼裝, 盲盒, 公仔)" list="catList" value="${d.category || ''}" onchange="updateField('${id}','category',this.value)">
+        <input type="text" placeholder="玩偶名字" value="${d.name || ''}" onchange="updateField('${id}','name',this.value)">
+        <input type="text" placeholder="分类 (例: 欧陆, 饼饼, 其他)" list="catList" value="${d.category || ''}" onchange="updateField('${id}','category',this.value)">
         <datalist id="catList">${[...new Set(dolls.map(x=>x.category).filter(Boolean))].map(c=>`<option value="${c}">`).join('')}</datalist>
 
-        <span class="priceLabel">售價</span>
+        <span class="priceLabel">售价</span>
         <div class="row2">
-          <input type="number" placeholder="售價" value="${d.price || ''}" onchange="updateField('${id}','price',parseFloat(this.value)||0)">
+          <input type="number" placeholder="售价" value="${d.price || ''}" onchange="updateField('${id}','price',parseFloat(this.value)||0)">
           <select onchange="updateField('${id}','currency',this.value)">
             ${CURRENCIES.map(c=>`<option value="${c}" ${d.currency===c?'selected':''}>${c}</option>`).join('')}
           </select>
@@ -278,15 +278,15 @@ function renderGrid(){
         </div>
 
         <div class="profit ${profit>=0?'pos':'neg'}">
-          利潤: ${priceSym}${profit.toFixed(1)} (成本已換算為 ${d.currency||'HKD'})
+          利潤: ${priceSym}${profit.toFixed(1)} (成本已换算為 ${d.currency||'HKD'})
         </div>
 
         <button type="button" class="negToggle ${d.negotiable ? 'active' : ''}" onclick="updateField('${id}','negotiable',${!d.negotiable})">
-          ${d.negotiable ? '✓ 可議價' : '可議價'}
+          ${d.negotiable ? '✓ 可议价' : '可议价'}
         </button>
 
         <div class="actions">
-          <button class="btnSold" onclick="toggleSold('${id}', ${!d.sold})">${d.sold ? '↩ 復原' : '✔ 標為已售'}</button>
+          <button class="btnSold" onclick="toggleSold('${id}', ${!d.sold})">${d.sold ? '↩ 复原' : '✔ 标为已售'}</button>
           <button class="btnDel" onclick="deleteDoll('${id}')">🗑 刪除</button>
         </div>
       </div>
@@ -302,12 +302,12 @@ function renderGrid(){
 
 async function addDoll(){
   const { error } = await sb.from('dolls').insert({ name:'新玩偶', price:0, currency:'HKD', cost:0, cost_currency:'HKD', category:'未分類', sold:false, negotiable:false });
-  if(error) showToast('新增失敗: '+error.message);
+  if(error) showToast('新增失败: '+error.message);
 }
 
 async function updateField(id, field, value){
   const { error } = await sb.from('dolls').update({ [field]: value }).eq('id', id);
-  if(error) showToast('更新失敗: '+error.message);
+  if(error) showToast('更新失败: '+error.message);
   else { const d = dolls.find(x=>String(x.id)===String(id)); if(d){ d[field]=value; renderGrid(); } }
 }
 
@@ -316,9 +316,9 @@ async function toggleSold(id, val){
 }
 
 async function deleteDoll(id){
-  if(!confirm('確定要刪除這個玩偶嗎？')) return;
+  if(!confirm('确定要删除这个公仔吗？')) return;
   const { error } = await sb.from('dolls').delete().eq('id', id);
-  if(error) showToast('刪除失敗: '+error.message);
+  if(error) showToast('刪除失败: '+error.message);
 }
 
 function onFileSelected(event, id){
@@ -366,7 +366,7 @@ async function confirmCrop(){
 
   const overlay = document.getElementById('overlay-'+dollId);
   if(overlay) overlay.classList.remove('hidden');
-  showToast('📤 照片上傳中,請耐心等候...');
+  showToast('📤 照片上传中,请耐心等候...');
 
   canvas.toBlob(async (blob) => {
     try{
@@ -376,9 +376,9 @@ async function confirmCrop(){
       const { data: urlData } = sb.storage.from('doll-images').getPublicUrl(fileName);
       const { error: updErr } = await sb.from('dolls').update({ image_url: urlData.publicUrl }).eq('id', dollId);
       if(updErr) throw updErr;
-      showToast('✅ 照片上傳成功！');
+      showToast('✅ 照片上传成功！');
     }catch(e){
-      showToast('上傳失敗: '+e.message);
+      showToast('上传失败: '+e.message);
     }finally{
       if(overlay) overlay.classList.add('hidden');
       currentCropDollId = null;
@@ -401,36 +401,36 @@ async function importData(event){
   const text = await file.text();
   try{
     const arr = JSON.parse(text);
-    if(!confirm(`即將匯入 ${arr.length} 筆資料,確定嗎？`)) return;
+    if(!confirm(`即将汇入 ${arr.length} 笔资料,确定吗？`)) return;
     for(const item of arr){
       const { id, ...rest } = item;
       await sb.from('dolls').insert(rest);
     }
-    showToast('匯入完成');
+    showToast('汇入完成');
   }catch(e){
-    showToast('匯入失敗: '+e.message);
+    showToast('汇入失败: '+e.message);
   }
 }
 
 async function loadOrders(){
   const { data, error } = await sb.from('orders').select('*').order('created_at', {ascending:false});
   const list = document.getElementById('ordersList');
-  if(error){ list.innerHTML = '讀取失敗: '+error.message; return; }
-  if(!data || !data.length){ list.innerHTML = '<p style="padding:20px;color:#888;">目前沒有訂單</p>'; return; }
+  if(error){ list.innerHTML = '读取失败: '+error.message; return; }
+  if(!data || !data.length){ list.innerHTML = '<p style="padding:20px;color:#888;">目前没有订单</p>'; return; }
   list.innerHTML = data.map(o => `
     <div class="orderCard">
       <h3>${o.customer_name || '未具名客人'} ${o.completed ? '<span class="done">(已完成)</span>' : ''}</h3>
-      <div class="meta">聯絡方式: ${o.contact || '-'} ｜ 時間: ${new Date(o.created_at).toLocaleString('zh-HK')}</div>
+      <div class="meta">联络方式: ${o.contact || '-'} ｜ 时间: ${new Date(o.created_at).toLocaleString('zh-HK')}</div>
       <ul>${(o.items || []).map(it => `<li>No.${String(it.item_no).padStart(3,'0')} ${it.name} - ${SYMBOL[it.currency||'HKD']}${it.price}</li>`).join('')}</ul>
-      <div style="margin-bottom:8px;"><b>總計: ${o.total_summary || ''}</b></div>
-      ${!o.completed ? `<button onclick="markCompleted('${o.id}')">標記已完成</button>` : ''}
+      <div style="margin-bottom:8px;"><b>总计: ${o.total_summary || ''}</b></div>
+      ${!o.completed ? `<button onclick="markCompleted('${o.id}')">标记已完成</button>` : ''}
     </div>
   `).join('');
 }
 
 async function markCompleted(id){
   const { error } = await sb.from('orders').update({ completed:true }).eq('id', id);
-  if(error) showToast('更新失敗: '+error.message);
+  if(error) showToast('更新失败: '+error.message);
   else loadOrders();
 }
 </script>
