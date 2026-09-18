@@ -65,7 +65,7 @@
   transform: translateZ(0);
   -webkit-backface-visibility: hidden;
 }
-.checkRow span {
+  .checkRow span {
   white-space:nowrap;
   color:#333;
 }
@@ -278,8 +278,9 @@ function renderGrid(){
           利潤: ${priceSym}${profit.toFixed(1)} (成本已換算為 ${d.currency||'HKD'})
         </div>
 
-        <label class="checkRow">
-          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField('${id}','negotiable',this.checked)"> <span>🏷 可議價</span>
+        <label class="checkRow" style="display:block;">
+          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField('${id}','negotiable',this.checked)" style="vertical-align:middle;">
+          <span style="vertical-align:middle;">🏷 可議價</span>
         </label>
 
         <div class="actions">
