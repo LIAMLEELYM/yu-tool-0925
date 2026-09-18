@@ -211,39 +211,39 @@ function renderGrid(){
     const card = document.createElement('div');
     card.className = 'card' + (d.sold ? ' sold' : '');
     const priceSym = SYMBOL[d.currency || 'HKD'];
-    const costSym = SYMBOL[d.cost_currency || 'HKD'];
     const costConverted = convert(d.cost || 0, d.cost_currency || 'HKD', d.currency || 'HKD');
     const profit = (d.price || 0) - costConverted;
     totalProfitHKD += convert(profit, d.currency || 'HKD', 'HKD');
+    const id = d.id; // UUID string - must always be wrapped in quotes when used inline below
 
     card.innerHTML = `
-      <div class="imgWrap" onclick="triggerUpload(${d.id})">
+      <div class="imgWrap" onclick="triggerUpload('${id}')">
         <span class="badge">No. ${String(d.item_no).padStart(3,'0')}</span>
         ${d.image_url ? `<img src="${d.image_url}">` : `<div class="placeholder">點擊上傳照片</div>`}
         ${d.sold ? '<div class="soldStamp">已售出</div>' : ''}
-        <div class="uploadOverlay hidden" id="overlay-${d.id}">
+        <div class="uploadOverlay hidden" id="overlay-${id}">
           <div class="spinner"></div>
           <div>上傳中,請稍候...</div>
         </div>
       </div>
       <div class="body">
-        <input type="file" accept="image/*" id="fileInput-${d.id}" style="display:none" onchange="onFileSelected(event, ${d.id})">
-        <input type="text" placeholder="玩偶名稱" value="${d.name || ''}" onchange="updateField(${d.id},'name',this.value)">
-        <input type="text" placeholder="分類 (例: 拼裝, 盲盒, 公仔)" list="catList" value="${d.category || ''}" onchange="updateField(${d.id},'category',this.value)">
+        <input type="file" accept="image/*" id="fileInput-${id}" style="display:none" onchange="onFileSelected(event, '${id}')">
+        <input type="text" placeholder="玩偶名稱" value="${d.name || ''}" onchange="updateField('${id}','name',this.value)">
+        <input type="text" placeholder="分類 (例: 拼裝, 盲盒, 公仔)" list="catList" value="${d.category || ''}" onchange="updateField('${id}','category',this.value)">
         <datalist id="catList">${[...new Set(dolls.map(x=>x.category).filter(Boolean))].map(c=>`<option value="${c}">`).join('')}</datalist>
 
         <span class="priceLabel">售價</span>
         <div class="row2">
-          <input type="number" placeholder="售價" value="${d.price || ''}" onchange="updateField(${d.id},'price',parseFloat(this.value)||0)">
-          <select onchange="updateField(${d.id},'currency',this.value)">
+          <input type="number" placeholder="售價" value="${d.price || ''}" onchange="updateField('${id}','price',parseFloat(this.value)||0)">
+          <select onchange="updateField('${id}','currency',this.value)">
             ${CURRENCIES.map(c=>`<option value="${c}" ${d.currency===c?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
 
         <span class="priceLabel">成本</span>
         <div class="row2">
-          <input type="number" placeholder="成本" value="${d.cost || ''}" onchange="updateField(${d.id},'cost',parseFloat(this.value)||0)">
-          <select onchange="updateField(${d.id},'cost_currency',this.value)">
+          <input type="number" placeholder="成本" value="${d.cost || ''}" onchange="updateField('${id}','cost',parseFloat(this.value)||0)">
+          <select onchange="updateField('${id}','cost_currency',this.value)">
             ${CURRENCIES.map(c=>`<option value="${c}" ${(d.cost_currency||'HKD')===c?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
@@ -253,12 +253,12 @@ function renderGrid(){
         </div>
 
         <div class="checkRow">
-          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField(${d.id},'negotiable',this.checked)"> 🏷 可議價
+          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField('${id}','negotiable',this.checked)"> 🏷 可議價
         </div>
 
         <div class="actions">
-          <button class="btnSold" onclick="toggleSold(${d.id}, ${!d.sold})">${d.sold ? '↩ 復原' : '✔ 標為已售'}</button>
-          <button class="btnDel" onclick="deleteDoll(${d.id})">🗑 刪除</button>
+          <button class="btnSold" onclick="toggleSold('${id}', ${!d.sold})">${d.sold ? '↩ 復原' : '✔ 標為已售'}</button>
+          <button class="btnDel" onclick="deleteDoll('${id}')">🗑 刪除</button>
         </div>
       </div>
     `;
@@ -279,7 +279,7 @@ async function addDoll(){
 async function updateField(id, field, value){
   const { error } = await sb.from('dolls').update({ [field]: value }).eq('id', id);
   if(error) showToast('更新失敗: '+error.message);
-  else { const d = dolls.find(x=>x.id===id); if(d){ d[field]=value; renderGrid(); } }
+  else { const d = dolls.find(x=>String(x.id)===String(id)); if(d){ d[field]=value; renderGrid(); } }
 }
 
 async function toggleSold(id, val){
@@ -398,7 +398,7 @@ async function loadOrders(){
       <div class="meta">聯絡方式: ${o.contact || '-'} ｜ 時間: ${new Date(o.created_at).toLocaleString('zh-HK')}</div>
       <ul>${(o.items || []).map(it => `<li>No.${String(it.item_no).padStart(3,'0')} ${it.name} - ${SYMBOL[it.currency||'HKD']}${it.price}</li>`).join('')}</ul>
       <div style="margin-bottom:8px;"><b>總計: ${o.total_summary || ''}</b></div>
-      ${!o.completed ? `<button onclick="markCompleted(${o.id})">標記已完成</button>` : ''}
+      ${!o.completed ? `<button onclick="markCompleted('${o.id}')">標記已完成</button>` : ''}
     </div>
   `).join('');
 }
