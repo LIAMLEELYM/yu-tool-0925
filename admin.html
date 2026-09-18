@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>玩偶管理後台</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.css" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.6.1/cropper.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif; background:#f4f4f7; margin:0; padding:0; }
+  #loginBox { max-width:320px; margin:100px auto; background:#fff; padding:30px; border-radius:12px; box-shadow:0 2px 10px rgba(0,0,0,.1); text-align:center; }
+  #loginBox input { width:100%; padding:10px; margin:10px 0; border:1px solid #ccc; border-radius:8px; font-size:16px; }
+  #loginBox button { width:100%; padding:10px; background:#ff6b81; color:#fff; border:none; border-radius:8px; font-size:16px; cursor:pointer; }
+  header { background:#fff; padding:14px 20px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 1px 4px rgba(0,0,0,.08); position:sticky; top:0; z-index:50; flex-wrap:wrap; gap:8px; }
+  header h1 { font-size:18px; margin:0; }
+  .tabs { display:flex; gap:8px; }
+  .tab-btn { padding:8px 16px; border:none; border-radius:8px; background:#eee; cursor:pointer; font-size:14px; }
+  .tab-btn.active { background:#ff6b81; color:#fff; }
+  .toolbar { display:flex; gap:8px; padding:14px 20px; flex-wrap:wrap; align-items:center; }
+  .toolbar button { padding:10px 16px; border:none; border-radius:8px; background:#ff6b81; color:#fff; cursor:pointer; font-size:14px; }
+  .toolbar button.secondary { background:#666; }
+  .stats { padding: 0 20px 10px; font-size:14px; color:#333; display:flex; gap:20px; flex-wrap:wrap; }
+  .stats b { color:#ff6b81; }
+  #grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; padding:16px 20px; }
+  .card { background:#fff; border-radius:12px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.08); position:relative; }
+  .card.sold { opacity:.6; }
+  .imgWrap { position:relative; width:100%; aspect-ratio:1/1; background:#eee; cursor:pointer; }
+  .imgWrap img { width:100%; height:100%; object-fit:cover; display:block; }
+  .imgWrap .placeholder { display:flex; align-items:center; justify-content:center; height:100%; color:#999; font-size:13px; }
+  .badge { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.6); color:#fff; font-size:12px; padding:3px 8px; border-radius:6px; z-index:2; }
+  .soldStamp { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%) rotate(-15deg); background:#e74c3c; color:#fff; font-weight:bold; padding:6px 16px; border-radius:6px; font-size:16px; z-index:3; }
+  .uploadOverlay { position:absolute; inset:0; background:rgba(0,0,0,.6); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-size:13px; z-index:4; }
+  .spinner { border:3px solid rgba(255,255,255,.3); border-top:3px solid #fff; border-radius:50%; width:28px; height:28px; animation:spin 1s linear infinite; margin-bottom:8px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .body { padding:12px; }
+  .body input, .body select, .body textarea { width:100%; padding:8px; margin-bottom:6px; border:1px solid #ddd; border-radius:6px; font-size:14px; }
+  .row2 { display:flex; gap:6px; }
+  .row2 > * { flex:1; }
+  .priceLabel { font-size:12px; color:#888; margin-bottom:2px; display:block; }
+  .profit { font-size:13px; padding:6px 8px; border-radius:6px; background:#f7f7f7; margin-bottom:6px; }
+  .profit.pos { color:#27ae60; font-weight:bold; }
+  .profit.neg { color:#e74c3c; font-weight:bold; }
+  .checkRow { display:flex; align-items:center; gap:6px; font-size:13px; margin-bottom:6px; }
+  .actions { display:flex; gap:6px; margin-top:8px; }
+  .actions button { flex:1; padding:8px; border:none; border-radius:6px; cursor:pointer; font-size:13px; }
+  .btnSold { background:#333; color:#fff; }
+  .btnDel { background:#e74c3c; color:#fff; }
+  #toast { position:fixed; top:16px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 20px; border-radius:8px; font-size:14px; z-index:999; display:none; }
+  #cropModal { position:fixed; inset:0; background:rgba(0,0,0,.85); display:none; align-items:center; justify-content:center; z-index:1000; flex-direction:column; }
+  #cropModal .cropBox { width:min(90vw,420px); background:#fff; border-radius:12px; padding:16px; }
+  #cropContainer { width:100%; height:320px; background:#222; }
+  #cropContainer img { max-width:100%; }
+  .cropControls { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; }
+  .cropControls button { flex:1; padding:8px; border:none; border-radius:6px; background:#eee; cursor:pointer; font-size:13px; }
+  .cropControls button.primary { background:#ff6b81; color:#fff; }
+  #ordersList { padding:16px 20px; }
+  .orderCard { background:#fff; border-radius:10px; padding:14px; margin-bottom:12px; box-shadow:0 2px 6px rgba(0,0,0,.08); }
+  .orderCard h3 { margin:0 0 6px; font-size:15px; }
+  .orderCard .meta { font-size:13px; color:#666; margin-bottom:8px; }
+  .orderCard ul { margin:0 0 8px; padding-left:18px; font-size:14px; }
+  .orderCard .done { color:#27ae60; font-weight:bold; }
+  .orderCard button { padding:6px 12px; border:none; border-radius:6px; background:#27ae60; color:#fff; cursor:pointer; font-size:13px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+
+<div id="loginBox">
+  <h2>🔒 管理者登入</h2>
+  <input type="password" id="pwdInput" placeholder="輸入密碼">
+  <button onclick="checkLogin()">登入</button>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <h1>🧸 玩偶管理後台</h1>
+    <div class="tabs">
+      <button class="tab-btn active" id="tabDolls" onclick="switchTab('dolls')">玩偶管理</button>
+      <button class="tab-btn" id="tabOrders" onclick="switchTab('orders')">🛒 客人訂單</button>
+    </div>
+  </header>
+
+  <div id="dollsPanel">
+    <div class="toolbar">
+      <button onclick="addDoll()">➕ 新增玩偶</button>
+      <button class="secondary" onclick="refreshRates()">🔄 重新整理匯率</button>
+      <button class="secondary" onclick="exportData()">💾 匯出備份</button>
+      <label class="secondary" style="padding:10px 16px;border-radius:8px;background:#666;color:#fff;cursor:pointer;">
+        📂 匯入備份 <input type="file" accept=".json" style="display:none" onchange="importData(event)">
+      </label>
+    </div>
+    <div class="stats">
+      <div>總數量: <b id="statTotal">0</b></div>
+      <div>已售出: <b id="statSold">0</b></div>
+      <div>未售出: <b id="statAvail">0</b></div>
+      <div>總利潤(概估,按HKD折算): <b id="statProfit">HK$0</b></div>
+    </div>
+    <div id="grid"></div>
+  </div>
+
+  <div id="ordersPanel" class="hidden">
+    <div id="ordersList"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<div id="cropModal">
+  <div class="cropBox">
+    <div id="cropContainer"><img id="cropImg" src=""></div>
+    <input type="range" id="zoomRange" min="-1" max="3" step="0.1" value="0" style="width:100%;margin-top:10px;">
+    <div class="cropControls">
+      <button onclick="rotateCrop(-90)">↺ 向左轉</button>
+      <button onclick="rotateCrop(90)">↻ 向右轉</button>
+    </div>
+    <div class="cropControls">
+      <button onclick="cancelCrop()">取消</button>
+      <button class="primary" onclick="confirmCrop()">✔ 確認並上傳</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://xukivnefbzctctgvzedk.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1a2l2bmVmYnpjdGN0Z3Z6ZWRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTUxNjEsImV4cCI6MjEwNTI5MTE2MX0.Hlxb6GgBq_V-z0epfvDa7WckgrLKiFU6sLJP8KnRAYk';
+const ADMIN_PASSWORD = 'eugene123';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CURRENCIES = ['HKD','CNY','JPY','KRW','TWD','USD'];
+const SYMBOL = { HKD:'HK$', CNY:'¥', JPY:'¥', KRW:'₩', TWD:'NT$', USD:'US$' };
+
+let dolls = [];
+let rates = null; // base HKD -> others
+let cropper = null;
+let currentCropDollId = null;
+let currentCropFile = null;
+
+function checkLogin(){
+  const val = document.getElementById('pwdInput').value;
+  if(val === ADMIN_PASSWORD){
+    document.getElementById('loginBox').classList.add('hidden');
+    document.getElementById('app').classList.remove('hidden');
+    init();
+  } else {
+    showToast('密碼錯誤');
+  }
+}
+
+function showToast(msg, ms=2500){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(window._toastTimer);
+  window._toastTimer = setTimeout(()=>{ t.style.display='none'; }, ms);
+}
+
+function switchTab(tab){
+  document.getElementById('tabDolls').classList.toggle('active', tab==='dolls');
+  document.getElementById('tabOrders').classList.toggle('active', tab==='orders');
+  document.getElementById('dollsPanel').classList.toggle('hidden', tab!=='dolls');
+  document.getElementById('ordersPanel').classList.toggle('hidden', tab!=='orders');
+  if(tab==='orders') loadOrders();
+}
+
+async function init(){
+  await refreshRates();
+  await loadDolls();
+  sb.channel('dolls-changes').on('postgres_changes', {event:'*', schema:'public', table:'dolls'}, ()=>{ loadDolls(); }).subscribe();
+  sb.channel('orders-changes').on('postgres_changes', {event:'*', schema:'public', table:'orders'}, ()=>{
+    if(!document.getElementById('ordersPanel').classList.contains('hidden')) loadOrders();
+  }).subscribe();
+}
+
+async function refreshRates(){
+  try{
+    const res = await fetch('https://api.frankfurter.dev/v1/latest?base=HKD&symbols=CNY,JPY,KRW,TWD,USD');
+    const data = await res.json();
+    rates = { HKD:1, ...data.rates };
+    showToast('匯率已更新');
+  }catch(e){
+    showToast('匯率讀取失敗,將使用預設估值');
+    rates = { HKD:1, CNY:0.93, JPY:19.5, KRW:171, TWD:4.05, USD:0.128 };
+  }
+  if(dolls.length) renderGrid();
+}
+
+function convert(amount, from, to){
+  if(!rates || from===to) return amount;
+  const inHKD = amount / (rates[from] ?? 1);
+  return inHKD * (rates[to] ?? 1);
+}
+
+async function loadDolls(){
+  const { data, error } = await sb.from('dolls').select('*').order('item_no', {ascending:true});
+  if(error){ showToast('讀取失敗: '+error.message); return; }
+  dolls = data || [];
+  renderGrid();
+}
+
+function renderGrid(){
+  const grid = document.getElementById('grid');
+  grid.innerHTML = '';
+  let total = dolls.length, sold = dolls.filter(d=>d.sold).length;
+  let totalProfitHKD = 0;
+
+  dolls.forEach(d=>{
+    const card = document.createElement('div');
+    card.className = 'card' + (d.sold ? ' sold' : '');
+    const priceSym = SYMBOL[d.currency || 'HKD'];
+    const costSym = SYMBOL[d.cost_currency || 'HKD'];
+    const costConverted = convert(d.cost || 0, d.cost_currency || 'HKD', d.currency || 'HKD');
+    const profit = (d.price || 0) - costConverted;
+    totalProfitHKD += convert(profit, d.currency || 'HKD', 'HKD');
+
+    card.innerHTML = `
+      <div class="imgWrap" onclick="triggerUpload(${d.id})">
+        <span class="badge">No. ${String(d.item_no).padStart(3,'0')}</span>
+        ${d.image_url ? `<img src="${d.image_url}">` : `<div class="placeholder">點擊上傳照片</div>`}
+        ${d.sold ? '<div class="soldStamp">已售出</div>' : ''}
+        <div class="uploadOverlay hidden" id="overlay-${d.id}">
+          <div class="spinner"></div>
+          <div>上傳中,請稍候...</div>
+        </div>
+      </div>
+      <div class="body">
+        <input type="file" accept="image/*" id="fileInput-${d.id}" style="display:none" onchange="onFileSelected(event, ${d.id})">
+        <input type="text" placeholder="玩偶名稱" value="${d.name || ''}" onchange="updateField(${d.id},'name',this.value)">
+        <input type="text" placeholder="分類 (例: 拼裝, 盲盒, 公仔)" list="catList" value="${d.category || ''}" onchange="updateField(${d.id},'category',this.value)">
+        <datalist id="catList">${[...new Set(dolls.map(x=>x.category).filter(Boolean))].map(c=>`<option value="${c}">`).join('')}</datalist>
+
+        <span class="priceLabel">售價</span>
+        <div class="row2">
+          <input type="number" placeholder="售價" value="${d.price || ''}" onchange="updateField(${d.id},'price',parseFloat(this.value)||0)">
+          <select onchange="updateField(${d.id},'currency',this.value)">
+            ${CURRENCIES.map(c=>`<option value="${c}" ${d.currency===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+
+        <span class="priceLabel">成本</span>
+        <div class="row2">
+          <input type="number" placeholder="成本" value="${d.cost || ''}" onchange="updateField(${d.id},'cost',parseFloat(this.value)||0)">
+          <select onchange="updateField(${d.id},'cost_currency',this.value)">
+            ${CURRENCIES.map(c=>`<option value="${c}" ${(d.cost_currency||'HKD')===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="profit ${profit>=0?'pos':'neg'}">
+          利潤: ${priceSym}${profit.toFixed(1)} (成本已換算為 ${d.currency||'HKD'})
+        </div>
+
+        <div class="checkRow">
+          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField(${d.id},'negotiable',this.checked)"> 🏷 可議價
+        </div>
+
+        <div class="actions">
+          <button class="btnSold" onclick="toggleSold(${d.id}, ${!d.sold})">${d.sold ? '↩ 復原' : '✔ 標為已售'}</button>
+          <button class="btnDel" onclick="deleteDoll(${d.id})">🗑 刪除</button>
+        </div>
+      </div>
+    `;
+    grid.appendChild(card);
+  });
+
+  document.getElementById('statTotal').textContent = total;
+  document.getElementById('statSold').textContent = sold;
+  document.getElementById('statAvail').textContent = total - sold;
+  document.getElementById('statProfit').textContent = 'HK$' + totalProfitHKD.toFixed(1);
+}
+
+async function addDoll(){
+  const { error } = await sb.from('dolls').insert({ name:'新玩偶', price:0, currency:'HKD', cost:0, cost_currency:'HKD', category:'未分類', sold:false, negotiable:false });
+  if(error) showToast('新增失敗: '+error.message);
+}
+
+async function updateField(id, field, value){
+  const { error } = await sb.from('dolls').update({ [field]: value }).eq('id', id);
+  if(error) showToast('更新失敗: '+error.message);
+  else { const d = dolls.find(x=>x.id===id); if(d){ d[field]=value; renderGrid(); } }
+}
+
+async function toggleSold(id, val){
+  await updateField(id, 'sold', val);
+}
+
+async function deleteDoll(id){
+  if(!confirm('確定要刪除這個玩偶嗎？')) return;
+  const { error } = await sb.from('dolls').delete().eq('id', id);
+  if(error) showToast('刪除失敗: '+error.message);
+}
+
+function triggerUpload(id){
+  document.getElementById('fileInput-'+id).click();
+}
+
+function onFileSelected(event, id){
+  const file = event.target.files[0];
+  if(!file) return;
+  currentCropDollId = id;
+  currentCropFile = file;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('cropImg').src = e.target.result;
+    document.getElementById('cropModal').style.display = 'flex';
+    if(cropper) cropper.destroy();
+    cropper = new Cropper(document.getElementById('cropImg'), {
+      aspectRatio: 1,
+      viewMode: 1,
+      background: false,
+      zoomable: true,
+    });
+    document.getElementById('zoomRange').value = 0;
+  };
+  reader.readAsDataURL(file);
+}
+
+document.getElementById('zoomRange').addEventListener('input', function(){
+  if(cropper) cropper.zoomTo(1 + parseFloat(this.value));
+});
+
+function rotateCrop(deg){
+  if(cropper) cropper.rotate(deg);
+}
+
+function cancelCrop(){
+  document.getElementById('cropModal').style.display = 'none';
+  if(cropper){ cropper.destroy(); cropper = null; }
+  currentCropDollId = null;
+  currentCropFile = null;
+}
+
+async function confirmCrop(){
+  if(!cropper || !currentCropDollId) return;
+  const canvas = cropper.getCroppedCanvas({ width:900, height:900 });
+  const dollId = currentCropDollId;
+  document.getElementById('cropModal').style.display = 'none';
+  cropper.destroy(); cropper = null;
+
+  const overlay = document.getElementById('overlay-'+dollId);
+  if(overlay) overlay.classList.remove('hidden');
+  showToast('📤 照片上傳中,請耐心等候...');
+
+  canvas.toBlob(async (blob) => {
+    try{
+      const fileName = `doll_${dollId}_${Date.now()}.jpg`;
+      const { error: upErr } = await sb.storage.from('doll-images').upload(fileName, blob, { contentType:'image/jpeg', upsert:true });
+      if(upErr) throw upErr;
+      const { data: urlData } = sb.storage.from('doll-images').getPublicUrl(fileName);
+      const { error: updErr } = await sb.from('dolls').update({ image_url: urlData.publicUrl }).eq('id', dollId);
+      if(updErr) throw updErr;
+      showToast('✅ 照片上傳成功！');
+    }catch(e){
+      showToast('上傳失敗: '+e.message);
+    }finally{
+      if(overlay) overlay.classList.add('hidden');
+      currentCropDollId = null;
+      currentCropFile = null;
+    }
+  }, 'image/jpeg', 0.9);
+}
+
+function exportData(){
+  const blob = new Blob([JSON.stringify(dolls, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'dolls_backup_' + new Date().toISOString().slice(0,10) + '.json';
+  a.click();
+}
+
+async function importData(event){
+  const file = event.target.files[0];
+  if(!file) return;
+  const text = await file.text();
+  try{
+    const arr = JSON.parse(text);
+    if(!confirm(`即將匯入 ${arr.length} 筆資料,確定嗎？`)) return;
+    for(const item of arr){
+      const { id, ...rest } = item;
+      await sb.from('dolls').insert(rest);
+    }
+    showToast('匯入完成');
+  }catch(e){
+    showToast('匯入失敗: '+e.message);
+  }
+}
+
+async function loadOrders(){
+  const { data, error } = await sb.from('orders').select('*').order('created_at', {ascending:false});
+  const list = document.getElementById('ordersList');
+  if(error){ list.innerHTML = '讀取失敗: '+error.message; return; }
+  if(!data || !data.length){ list.innerHTML = '<p style="padding:20px;color:#888;">目前沒有訂單</p>'; return; }
+  list.innerHTML = data.map(o => `
+    <div class="orderCard">
+      <h3>${o.customer_name || '未具名客人'} ${o.completed ? '<span class="done">(已完成)</span>' : ''}</h3>
+      <div class="meta">聯絡方式: ${o.contact || '-'} ｜ 時間: ${new Date(o.created_at).toLocaleString('zh-HK')}</div>
+      <ul>${(o.items || []).map(it => `<li>No.${String(it.item_no).padStart(3,'0')} ${it.name} - ${SYMBOL[it.currency||'HKD']}${it.price}</li>`).join('')}</ul>
+      <div style="margin-bottom:8px;"><b>總計: ${o.total_summary || ''}</b></div>
+      ${!o.completed ? `<button onclick="markCompleted(${o.id})">標記已完成</button>` : ''}
+    </div>
+  `).join('');
+}
+
+async function markCompleted(id){
+  const { error } = await sb.from('orders').update({ completed:true }).eq('id', id);
+  if(error) showToast('更新失敗: '+error.message);
+  else loadOrders();
+}
+</script>
+</body>
+</html>
