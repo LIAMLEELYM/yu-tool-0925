@@ -54,25 +54,23 @@
   .profit { font-size:13px; padding:6px 8px; border-radius:6px; background:#f7f7f7; margin-bottom:6px; }
   .profit.pos { color:#27ae60; font-weight:bold; }
   .profit.neg { color:#e74c3c; font-weight:bold; }
-  .checkRow {
-  display: block;
-  padding: 8px 0;
-  margin-bottom: 6px;
-  font-size: 13px;
-  color: #333 !important;
-  cursor: pointer;
-  }
-  .checkRow input[type="checkbox"] {
-  vertical-align: middle;
-  margin-right: 6px;
-  }
-  .checkRow .cbText {
+  .negToggle {
   display: inline-block;
-  vertical-align: middle;
-  color: #333 !important;
-  -webkit-text-fill-color: #333;
-  opacity: 1 !important;
-  visibility: visible !important;
+  padding: 8px 16px;
+  margin-bottom: 6px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+  border: 1.5px solid #ddd;
+  background: #f7f7f7;
+  color: #999;
+  transition: all 0.15s;
+  }
+  .negToggle.active {
+  background: #fff3cd;
+  border-color: #f1c40f;
+  color: #b8860b;
   }
   .actions { display:flex; gap:6px; margin-top:8px; }
   .actions button { flex:1; padding:8px; border:none; border-radius:6px; cursor:pointer; font-size:13px; }
@@ -283,10 +281,9 @@ function renderGrid(){
           利潤: ${priceSym}${profit.toFixed(1)} (成本已換算為 ${d.currency||'HKD'})
         </div>
 
-        <label class="checkRow">
-          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField('${id}','negotiable',this.checked)">
-          <span class="cbText">可議價</span>
-        </label>
+        <button type="button" class="negToggle ${d.negotiable ? 'active' : ''}" onclick="updateField('${id}','negotiable',${!d.negotiable})">
+          ${d.negotiable ? '✓ 可議價' : '可議價'}
+        </button>
 
         <div class="actions">
           <button class="btnSold" onclick="toggleSold('${id}', ${!d.sold})">${d.sold ? '↩ 復原' : '✔ 標為已售'}</button>
