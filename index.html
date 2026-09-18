@@ -55,20 +55,25 @@
   .profit.pos { color:#27ae60; font-weight:bold; }
   .profit.neg { color:#e74c3c; font-weight:bold; }
   .checkRow {
-  display:flex;
-  align-items:center;
-  gap:6px;
-  font-size:13px;
-  margin-bottom:6px;
-  cursor:pointer;
-  -webkit-transform: translateZ(0);
-  transform: translateZ(0);
-  -webkit-backface-visibility: hidden;
-}
-  .checkRow span {
-  white-space:nowrap;
-  color:#333;
-}
+  display: block;
+  padding: 8px 0;
+  margin-bottom: 6px;
+  font-size: 13px;
+  color: #333 !important;
+  cursor: pointer;
+  }
+  .checkRow input[type="checkbox"] {
+  vertical-align: middle;
+  margin-right: 6px;
+  }
+  .checkRow .cbText {
+  display: inline-block;
+  vertical-align: middle;
+  color: #333 !important;
+  -webkit-text-fill-color: #333;
+  opacity: 1 !important;
+  visibility: visible !important;
+  }
   .actions { display:flex; gap:6px; margin-top:8px; }
   .actions button { flex:1; padding:8px; border:none; border-radius:6px; cursor:pointer; font-size:13px; }
   .btnSold { background:#333; color:#fff; }
@@ -278,9 +283,9 @@ function renderGrid(){
           利潤: ${priceSym}${profit.toFixed(1)} (成本已換算為 ${d.currency||'HKD'})
         </div>
 
-        <label class="checkRow" style="display:block;">
-          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField('${id}','negotiable',this.checked)" style="vertical-align:middle;">
-          <span style="vertical-align:middle;">🏷 可議價</span>
+        <label class="checkRow">
+          <input type="checkbox" ${d.negotiable?'checked':''} onchange="updateField('${id}','negotiable',this.checked)">
+          <span class="cbText">可議價</span>
         </label>
 
         <div class="actions">
