@@ -43,6 +43,9 @@
   .imgWrap .placeholder { display:flex; align-items:center; justify-content:center; height:100%; color:#999; font-size:13px; }
   .badge { position:absolute; top:8px; left:8px; background:rgba(0,0,0,.6); color:#fff; font-size:12px; padding:3px 8px; border-radius:6px; z-index:2; }
   .soldStamp { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%) rotate(-15deg); background:#e74c3c; color:#fff; font-weight:bold; padding:6px 16px; border-radius:6px; font-size:16px; z-index:3; }
+  .reservedStamp { position:absolute; top:40%; left:50%; transform:translate(-50%,-50%) rotate(-15deg); background:#f39c12; color:#fff; font-weight:bold; padding:6px 16px; border-radius:6px; font-size:15px; z-index:3; }
+  .card.reserved { opacity:.75; }
+  .unreserveBtn { width:100%; padding:8px; margin-top:6px; border:1px solid #f39c12; background:#fff7e6; color:#b9770e; border-radius:8px; cursor:pointer; font-size:13px; }
   .uploadOverlay { position:absolute; inset:0; background:rgba(0,0,0,.6); display:flex; flex-direction:column; align-items:center; justify-content:center; color:#fff; font-size:13px; z-index:4; }
   .spinner { border:3px solid rgba(255,255,255,.3); border-top:3px solid #fff; border-radius:50%; width:28px; height:28px; animation:spin 1s linear infinite; margin-bottom:8px; }
   @keyframes spin { to { transform: rotate(360deg); } }
@@ -115,6 +118,7 @@
   <div id="dollsPanel">
     <div class="toolbar">
       <button onclick="addDoll()">➕ 新增玩偶</button>
+      <button class="secondary" id="sortBtn" onclick="toggleSortOrder()">⬇ 编号倒序</button>
       <button class="secondary" onclick="refreshRates()">🔄 重新整理汇率</button>
       <button class="secondary" onclick="exportData()">💾 汇出备份</button>
       <label class="secondary" style="padding:10px 16px;border-radius:8px;background:#666;color:#fff;cursor:pointer;">
@@ -223,10 +227,18 @@ function convert(amount, from, to){
   return inHKD * (rates[to] ?? 1);
 }
 
+let sortOrder = 'desc'; // 'desc' = 新增在前 (倒序), 'asc' = 编号顺序
+
 async function loadDolls(){
   const { data, error } = await sb.from('dolls').select('*').order('item_no', {ascending:true});
   if(error){ showToast('读取失败: '+error.message); return; }
   dolls = data || [];
+  renderGrid();
+}
+
+function toggleSortOrder(){
+  sortOrder = sortOrder === 'asc' ? 'desc' : 'asc';
+  document.getElementById('sortBtn').textContent = sortOrder === 'asc' ? '⬆ 编号顺序' : '⬇ 编号倒序';
   renderGrid();
 }
 
@@ -236,20 +248,24 @@ function renderGrid(){
   let total = dolls.length, sold = dolls.filter(d=>d.sold).length;
   let totalProfitHKD = 0;
 
-  dolls.forEach(d=>{
+  let list = [...dolls];
+  list.sort((x,y)=> sortOrder === 'asc' ? (x.item_no - y.item_no) : (y.item_no - x.item_no));
+
+  list.forEach(d=>{
     const card = document.createElement('div');
-    card.className = 'card' + (d.sold ? ' sold' : '');
-    const priceSym = SYMBOL[d.currency || 'HKD'];
-    const costConverted = convert(d.cost || 0, d.cost_currency || 'HKD', d.currency || 'HKD');
-    const profit = (d.price || 0) - costConverted;
-    totalProfitHKD += convert(profit, d.currency || 'HKD', 'HKD');
+    card.className = 'card' + (d.sold ? ' sold' : '') + (!d.sold && d.reserved ? ' reserved' : '');
+    const priceSym = SYMBOL[d.currency || 'CNY'];
+    const costConverted = convert(d.cost || 0, d.cost_currency || 'HKD', d.currency || 'CNY');
+    const shippingConverted = convert(d.shipping || 0, d.shipping_currency || 'CNY', d.currency || 'CNY');
+    const profit = (d.price || 0) - costConverted - shippingConverted;
+    totalProfitHKD += convert(profit, d.currency || 'CNY', 'HKD');
     const id = d.id;
 
     card.innerHTML = `
       <label class="imgWrap" for="fileInput-${id}">
         <span class="badge">No. ${String(d.item_no).padStart(3,'0')}</span>
         ${d.image_url ? `<img src="${d.image_url}">` : `<div class="placeholder">点击上传照片</div>`}
-        ${d.sold ? '<div class="soldStamp">已售出</div>' : ''}
+        ${d.sold ? '<div class="soldStamp">已售出</div>' : (d.reserved ? '<div class="reservedStamp">已被预订</div>' : '')}
         <div class="uploadOverlay hidden" id="overlay-${id}">
           <div class="spinner"></div>
           <div>上传中,请稍等...</div>
@@ -265,7 +281,7 @@ function renderGrid(){
         <div class="row2">
           <input type="number" placeholder="售价" value="${d.price || ''}" onchange="updateField('${id}','price',parseFloat(this.value)||0)">
           <select onchange="updateField('${id}','currency',this.value)">
-            ${CURRENCIES.map(c=>`<option value="${c}" ${d.currency===c?'selected':''}>${c}</option>`).join('')}
+            ${CURRENCIES.map(c=>`<option value="${c}" ${(d.currency||'CNY')===c?'selected':''}>${c}</option>`).join('')}
           </select>
         </div>
 
@@ -277,17 +293,27 @@ function renderGrid(){
           </select>
         </div>
 
+        <span class="priceLabel">运费</span>
+        <div class="row2">
+          <input type="number" placeholder="运费" value="${d.shipping || ''}" onchange="updateField('${id}','shipping',parseFloat(this.value)||0)">
+          <select onchange="updateField('${id}','shipping_currency',this.value)">
+            ${CURRENCIES.map(c=>`<option value="${c}" ${(d.shipping_currency||'CNY')===c?'selected':''}>${c}</option>`).join('')}
+          </select>
+        </div>
+
         <div class="profit ${profit>=0?'pos':'neg'}">
-          利潤: ${priceSym}${profit.toFixed(1)} (成本已换算為 ${d.currency||'HKD'})
+          利润: ${priceSym}${profit.toFixed(1)} (售价 - 成本 - 运费,已换算为 ${d.currency||'CNY'})
         </div>
 
         <button type="button" class="negToggle ${d.negotiable ? 'active' : ''}" onclick="updateField('${id}','negotiable',${!d.negotiable})">
           ${d.negotiable ? '✓ 可议价' : '可议价'}
         </button>
 
+        ${d.reserved && !d.sold ? `<button type="button" class="unreserveBtn" onclick="updateField('${id}','reserved',false)">↩ 取消预订标记</button>` : ''}
+
         <div class="actions">
           <button class="btnSold" onclick="toggleSold('${id}', ${!d.sold})">${d.sold ? '↩ 复原' : '✔ 标为已售'}</button>
-          <button class="btnDel" onclick="deleteDoll('${id}')">🗑 刪除</button>
+          <button class="btnDel" onclick="deleteDoll('${id}')">🗑 删除</button>
         </div>
       </div>
     `;
@@ -300,8 +326,9 @@ function renderGrid(){
   document.getElementById('statProfit').textContent = 'HK$' + totalProfitHKD.toFixed(1);
 }
 
+
 async function addDoll(){
-  const { error } = await sb.from('dolls').insert({ name:'新玩偶', price:0, currency:'HKD', cost:0, cost_currency:'HKD', category:'未分類', sold:false, negotiable:false });
+  const { error } = await sb.from('dolls').insert({ name:'新玩偶', price:0, currency:'CNY', cost:0, cost_currency:'HKD', shipping:0, shipping_currency:'CNY', category:'未分类', sold:false, negotiable:false, reserved:false });
   if(error) showToast('新增失败: '+error.message);
 }
 
@@ -312,13 +339,19 @@ async function updateField(id, field, value){
 }
 
 async function toggleSold(id, val){
-  await updateField(id, 'sold', val);
+  if(val){
+    const { error } = await sb.from('dolls').update({ sold:true, reserved:false }).eq('id', id);
+    if(error) showToast('更新失败: '+error.message);
+    else { const d = dolls.find(x=>String(x.id)===String(id)); if(d){ d.sold=true; d.reserved=false; renderGrid(); } }
+  } else {
+    await updateField(id, 'sold', false);
+  }
 }
 
 async function deleteDoll(id){
   if(!confirm('确定要删除这个公仔吗？')) return;
   const { error } = await sb.from('dolls').delete().eq('id', id);
-  if(error) showToast('刪除失败: '+error.message);
+  if(error) showToast('删除失败: '+error.message);
 }
 
 function onFileSelected(event, id){
