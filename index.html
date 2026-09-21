@@ -398,16 +398,35 @@ function onFileSelected(event, id){
   currentCropFile = file;
   const reader = new FileReader();
   reader.onload = e => {
-    document.getElementById('cropImg').src = e.target.result;
-    document.getElementById('cropModal').style.display = 'flex';
-    if(cropper) cropper.destroy();
-    cropper = new Cropper(document.getElementById('cropImg'), {
-      aspectRatio: 1,
-      viewMode: 1,
-      background: false,
-      zoomable: true,
-    });
-    document.getElementById('zoomRange').value = 0;
+    const img = new Image();
+    img.onload = () => {
+      const MAX_DIM = 2000;
+      let { width, height } = img;
+      if(width > MAX_DIM || height > MAX_DIM){
+        const scale = Math.min(MAX_DIM / width, MAX_DIM / height);
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+      }
+      const resizeCanvas = document.createElement('canvas');
+      resizeCanvas.width = width;
+      resizeCanvas.height = height;
+      const ctx = resizeCanvas.getContext('2d');
+      ctx.drawImage(img, 0, 0, width, height);
+      const resizedDataUrl = resizeCanvas.toDataURL('image/jpeg', 0.92);
+
+      document.getElementById('cropImg').src = resizedDataUrl;
+      document.getElementById('cropModal').style.display = 'flex';
+      if(cropper) cropper.destroy();
+      cropper = new Cropper(document.getElementById('cropImg'), {
+        aspectRatio: 1,
+        viewMode: 1,
+        background: false,
+        zoomable: true,
+      });
+      document.getElementById('zoomRange').value = 0;
+    };
+    img.onerror = () => { showToast('图片读取失败,请换一张照片'); };
+    img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
