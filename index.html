@@ -229,11 +229,24 @@ function convert(amount, from, to){
 
 let sortOrder = 'desc'; // 'desc' = 新增在前 (倒序), 'asc' = 编号顺序
 
+function normalizeCategory(cat){
+  if(!cat) return '';
+  const t = cat.trim();
+  if(t === '未分類' || t === '未分类') return '';
+  return t;
+}
+
 async function loadDolls(){
   const { data, error } = await sb.from('dolls').select('*').order('item_no', {ascending:true});
   if(error){ showToast('读取失败: '+error.message); return; }
-  dolls = data || [];
+  dolls = (data || []).map(d => ({ ...d, category: normalizeCategory(d.category) }));
   renderGrid();
+
+  (data || []).forEach(d => {
+    if(d.category === '未分類'){
+      sb.from('dolls').update({ category: '' }).eq('id', d.id);
+    }
+  });
 }
 
 function toggleSortOrder(){
@@ -281,7 +294,7 @@ function renderGrid(){
 
         <select id="catSelect-${id}" onchange="onCategorySelectChange('${id}', this.value)">
           <option value="__new__" ${curCat && !isKnownCat ? 'selected' : ''}>+ 新增分类...</option>
-          <option value="">未分类</option>
+          <option value="" ${!curCat ? 'selected' : ''}>未分类</option>
           ${allCategories.map(cat=>`<option value="${cat}" ${curCat===cat?'selected':''}>${cat}</option>`).join('')}
         </select>
         <input type="text" id="catNewInput-${id}" placeholder="输入新分类名称" value="${!isKnownCat && curCat ? curCat : ''}"
@@ -351,11 +364,12 @@ function onCategorySelectChange(id, value){
 
 
 async function addDoll(){
-  const { error } = await sb.from('dolls').insert({ name:'新玩偶', price:0, currency:'CNY', cost:0, cost_currency:'HKD', shipping:0, shipping_currency:'CNY', category:'未分类', sold:false, negotiable:false, reserved:false });
+  const { error } = await sb.from('dolls').insert({ name:'新玩偶', price:0, currency:'CNY', cost:0, cost_currency:'HKD', shipping:0, shipping_currency:'CNY', category:'', sold:false, negotiable:false, reserved:false });
   if(error) showToast('新增失败: '+error.message);
 }
 
 async function updateField(id, field, value){
+  if(field === 'category') value = normalizeCategory(value);
   const { error } = await sb.from('dolls').update({ [field]: value }).eq('id', id);
   if(error) showToast('更新失败: '+error.message);
   else { const d = dolls.find(x=>String(x.id)===String(id)); if(d){ d[field]=value; renderGrid(); } }
