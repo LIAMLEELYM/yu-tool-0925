@@ -251,6 +251,8 @@ function renderGrid(){
   let list = [...dolls];
   list.sort((x,y)=> sortOrder === 'asc' ? (x.item_no - y.item_no) : (y.item_no - x.item_no));
 
+  const allCategories = [...new Set(dolls.map(x=>x.category).filter(Boolean))];
+
   list.forEach(d=>{
     const card = document.createElement('div');
     card.className = 'card' + (d.sold ? ' sold' : '') + (!d.sold && d.reserved ? ' reserved' : '');
@@ -260,6 +262,8 @@ function renderGrid(){
     const profit = (d.price || 0) - costConverted - shippingConverted;
     totalProfitHKD += convert(profit, d.currency || 'CNY', 'HKD');
     const id = d.id;
+    const curCat = d.category || '';
+    const isKnownCat = curCat && allCategories.includes(curCat);
 
     card.innerHTML = `
       <label class="imgWrap" for="fileInput-${id}">
@@ -274,8 +278,15 @@ function renderGrid(){
       </label>
       <div class="body">
         <input type="text" placeholder="玩偶名字" value="${d.name || ''}" onchange="updateField('${id}','name',this.value)">
-        <input type="text" placeholder="分类 (例: 欧陆, 饼饼, 其他)" list="catList" value="${d.category || ''}" onchange="updateField('${id}','category',this.value)">
-        <datalist id="catList">${[...new Set(dolls.map(x=>x.category).filter(Boolean))].map(c=>`<option value="${c}">`).join('')}</datalist>
+
+        <select id="catSelect-${id}" onchange="onCategorySelectChange('${id}', this.value)">
+          <option value="__new__" ${curCat && !isKnownCat ? 'selected' : ''}>+ 新增分类...</option>
+          <option value="">未分类</option>
+          ${allCategories.map(cat=>`<option value="${cat}" ${curCat===cat?'selected':''}>${cat}</option>`).join('')}
+        </select>
+        <input type="text" id="catNewInput-${id}" placeholder="输入新分类名称" value="${!isKnownCat && curCat ? curCat : ''}"
+          style="${(curCat && !isKnownCat) ? '' : 'display:none;'}"
+          onchange="updateField('${id}','category',this.value)">
 
         <span class="priceLabel">售价</span>
         <div class="row2">
@@ -324,6 +335,18 @@ function renderGrid(){
   document.getElementById('statSold').textContent = sold;
   document.getElementById('statAvail').textContent = total - sold;
   document.getElementById('statProfit').textContent = 'HK$' + totalProfitHKD.toFixed(1);
+}
+
+function onCategorySelectChange(id, value){
+  const newInput = document.getElementById('catNewInput-'+id);
+  if(value === '__new__'){
+    newInput.style.display = '';
+    newInput.value = '';
+    newInput.focus();
+  } else {
+    newInput.style.display = 'none';
+    updateField(id, 'category', value);
+  }
 }
 
 
