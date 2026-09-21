@@ -102,7 +102,8 @@
 
 <div id="loginBox">
   <h2>🔒 管理者登入</h2>
-  <input type="password" id="pwdInput" placeholder="输入密码">
+  <input type="email" id="emailInput" placeholder="邮箱">
+  <input type="password" id="pwdInput" placeholder="密码">
   <button onclick="checkLogin()">登入</button>
 </div>
 
@@ -113,6 +114,7 @@
       <button class="tab-btn active" id="tabDolls" onclick="switchTab('dolls')">玩偶管理</button>
       <button class="tab-btn" id="tabOrders" onclick="switchTab('orders')">🛒 客人订单</button>
     </div>
+    <button class="secondary" onclick="logout()">🚪 登出</button>
   </header>
 
   <div id="dollsPanel">
@@ -159,7 +161,6 @@
 <script>
 const SUPABASE_URL = 'https://xukivnefbzctctgvzedk.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inh1a2l2bmVmYnpjdGN0Z3Z6ZWRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODk3MTUxNjEsImV4cCI6MjEwNTI5MTE2MX0.Hlxb6GgBq_V-z0epfvDa7WckgrLKiFU6sLJP8KnRAYk';
-const ADMIN_PASSWORD = 'eugene123';
 
 const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -172,16 +173,38 @@ let cropper = null;
 let currentCropDollId = null;
 let currentCropFile = null;
 
-function checkLogin(){
-  const val = document.getElementById('pwdInput').value;
-  if(val === ADMIN_PASSWORD){
+async function checkLogin(){
+  const email = document.getElementById('emailInput').value.trim();
+  const pwd = document.getElementById('pwdInput').value;
+  if(!email || !pwd){ showToast('请输入邮箱和密码'); return; }
+  const { data, error } = await sb.auth.signInWithPassword({ email, password: pwd });
+  if(error){
+    showToast('登入失败: 邮箱或密码错误');
+    return;
+  }
+  document.getElementById('loginBox').classList.add('hidden');
+  document.getElementById('app').classList.remove('hidden');
+  init();
+}
+
+async function checkExistingSession(){
+  const { data } = await sb.auth.getSession();
+  if(data && data.session){
     document.getElementById('loginBox').classList.add('hidden');
     document.getElementById('app').classList.remove('hidden');
     init();
-  } else {
-    showToast('密码错误');
   }
 }
+
+async function logout(){
+  await sb.auth.signOut();
+  document.getElementById('app').classList.add('hidden');
+  document.getElementById('loginBox').classList.remove('hidden');
+  document.getElementById('emailInput').value = '';
+  document.getElementById('pwdInput').value = '';
+}
+
+checkExistingSession();
 
 function showToast(msg, ms=2500){
   const t = document.getElementById('toast');
@@ -227,7 +250,7 @@ function convert(amount, from, to){
   return inHKD * (rates[to] ?? 1);
 }
 
-let sortOrder = 'desc'; // 'desc' = 新增在前 (倒序), 'asc' = 编号顺序
+let sortOrder = 'desc';
 
 function normalizeCategory(cat){
   if(!cat) return '';
